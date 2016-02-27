@@ -1,0 +1,68 @@
+#!/usr/bin/env ruby
+
+require 'mechanize'
+require 'socksify'
+require 'socksify/http'
+
+# monkey-pathc Mechanize as per: https://gist.github.com/kuroineko/1854726
+class Mechanize::HTTP::Agent
+  def set_socks(addr, port)
+    set_http unless @http
+    class << @http
+      attr_accessor :socks_addr, :socks_port
+
+      def http_class
+        Net::HTTP.SOCKSProxy(socks_addr, socks_port)
+      end
+    end
+    @http.socks_addr = addr
+    @http.socks_port = port
+  end
+end
+
+# class to get JT a/c usage
+class UsageMonitor
+  URL = 'https://secure.jtglobal.com/consumer/jfn?entry=home'.freeze
+  LOGIN = ENV['JT_USERNAME'].freeze
+  PWD = ENV['JT_PASSWORD'].freeze
+
+  def initialize
+    @agent = Mechanize.new
+    @agent.agent.set_socks('localhost', 9050) # use Tor
+    @agent.agent.http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+    @login_form = login_form
+    @consumer_page = consumer_page
+    @account_page = account_page
+    @usage_page = usage_page
+  end
+
+  def login_form
+    @agent.get(URL).forms.last
+  end
+
+  def consumer_page
+    @login_form['login'] = LOGIN
+    @login_form['password'] = PWD
+    @agent.submit(@login_form, @login_form.buttons.first)
+  end
+
+  def account_page
+    @consumer_page.forms.last.fields[0].option_with(value: 'L6:130893').select
+    @consumer_page.forms.last.submit
+  end
+
+  def usage_page
+    @account_page.links[4].click
+  end
+
+  def remaining
+    @usage_page./('fieldset p')[2].text.match(/\d+\.\d+[A-Z]{2}/)
+  end
+
+  def allowance
+    @usage_page./('fieldset p')[3].text.match(/\d+\.\d+[A-Z]{2}/)
+  end
+end
+
+monitor = UsageMonitor.new
+puts "#{monitor.remaining} of #{monitor.allowance} remaining"
