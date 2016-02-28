@@ -55,14 +55,10 @@ class UsageMonitor
     @account_page.links[4].click
   end
 
-  def remaining
-    @usage_page./('fieldset p')[2].text.match(/\d+\.\d+[A-Z]{2}/)
-  end
-
-  def allowance
-    @usage_page./('fieldset p')[3].text.match(/\d+\.\d+[A-Z]{2}/)
+  def balance_details(field_index)
+    @usage_page./('fieldset p')[field_index].text.match(/\d+\.\d+[A-Z]{2}/)
   end
 end
 
-monitor = UsageMonitor.new
-puts "#{monitor.remaining} of #{monitor.allowance} remaining"
+um = UsageMonitor.new
+puts "#{um.balance_details 2} of #{um.balance_details 3} remaining"
