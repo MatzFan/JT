@@ -5,18 +5,23 @@ require 'socksify'
 require 'socksify/http'
 
 # monkey-pathc Mechanize as per: https://gist.github.com/kuroineko/1854726
-class Mechanize::HTTP::Agent
-  def set_socks(addr, port)
-    set_http unless @http
-    class << @http
-      attr_accessor :socks_addr, :socks_port
+class Mechanize
+  class HTTP
+    # reopen
+    class Agent
+      def set_socks(addr, port)
+        set_http unless @http
+        class << @http
+          attr_accessor :socks_addr, :socks_port
 
-      def http_class
-        Net::HTTP.SOCKSProxy(socks_addr, socks_port)
+          def http_class
+            Net::HTTP.SOCKSProxy(socks_addr, socks_port)
+          end
+        end
+        @http.socks_addr = addr
+        @http.socks_port = port
       end
     end
-    @http.socks_addr = addr
-    @http.socks_port = port
   end
 end
 
@@ -25,6 +30,8 @@ class UsageMonitor
   URL = 'https://secure.jtglobal.com/consumer/jfn?entry=home'.freeze
   LOGIN = ENV['JT_USERNAME'].freeze
   PWD = ENV['JT_PASSWORD'].freeze
+  REGEX = /([\d+|,+]+)/
+  MB = 1024 * 1024
 
   def initialize
     @agent = Mechanize.new
@@ -56,9 +63,16 @@ class UsageMonitor
   end
 
   def balance_details(field_index)
-    @usage_page./('fieldset p')[field_index].text.match(/\d+\.\d+[A-Z]{2}/)
+    to_gb @usage_page./('fieldset p')[field_index].text.match(REGEX)[0]
+  end
+
+  def to_gb(string)
+    string.delete(',').to_i / MB
+  end
+
+  def usage
+    "#{balance_details 2}GB of #{balance_details 3}GB remaining"
   end
 end
 
-um = UsageMonitor.new
-puts "#{um.balance_details 2} of #{um.balance_details 3} remaining"
+puts UsageMonitor.new.usage
