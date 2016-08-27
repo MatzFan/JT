@@ -4,23 +4,27 @@ require 'mechanize'
 require 'socksify'
 require 'socksify/http'
 
-# monkey-pathc Mechanize as per: https://gist.github.com/kuroineko/1854726
+# add Tor functionality to Agent https://gist.github.com/kuroineko/1854726
+module MechanizeAgentExtensions
+  def set_socks(addr, port)
+    set_http unless @http
+    class << @http
+      attr_accessor :socks_addr, :socks_port
+
+      def http_class
+        Net::HTTP.SOCKSProxy(socks_addr, socks_port)
+      end
+    end
+    @http.socks_addr = addr
+    @http.socks_port = port
+  end
+end
+
 class Mechanize
   class HTTP
-    # reopen
+    # patch Agent
     class Agent
-      def set_socks(addr, port)
-        set_http unless @http
-        class << @http
-          attr_accessor :socks_addr, :socks_port
-
-          def http_class
-            Net::HTTP.SOCKSProxy(socks_addr, socks_port)
-          end
-        end
-        @http.socks_addr = addr
-        @http.socks_port = port
-      end
+      prepend MechanizeAgentExtensions
     end
   end
 end
@@ -31,7 +35,7 @@ class UsageMonitor
   LOGIN = ENV['JT_USERNAME'].freeze
   PWD = ENV['JT_PASSWORD'].freeze
   REGEX = /([\d+|,+]+)/
-  MB = 1024 * 1024
+  # MB = 1024 * 1024
 
   def initialize
     @agent = Mechanize.new
@@ -59,16 +63,17 @@ class UsageMonitor
   end
 
   def usage_page
-    @account_page.links[4].click
+    @account_page.link_with(text: /My balances/).click
   end
 
   def balance_details(field_index)
-    to_gb @usage_page./('fieldset p')[field_index].text.match(REGEX)[0]
+    # to_gb @usage_page./('fieldset p')[field_index].text.match(REGEX)[0]
+    @usage_page./('fieldset p')[field_index].text.match(REGEX)[0]
   end
 
-  def to_gb(string)
-    string.delete(',').to_i / MB
-  end
+  # def to_gb(string)
+  #   string.delete(',').to_i / MB
+  # end
 
   def usage
     "#{balance_details 2}GB of #{balance_details 3}GB remaining"
