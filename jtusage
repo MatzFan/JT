@@ -1,17 +1,17 @@
 #!/usr/bin/env ruby
 
-require 'mechanize'
+require 'mechanize' # uses Net::HTTP::Persistent via gem
 require 'socksify'
 require 'socksify/http'
 
 # add Tor functionality to Agent https://gist.github.com/kuroineko/1854726
 module MechanizeAgentExtensions
   def set_socks(addr, port)
-    set_http unless @http
-    class << @http
+    # set_http unless @http
+    class << @http # opens the Net::HTTP::Persistent instance
       attr_accessor :socks_addr, :socks_port
 
-      def http_class
+      def http_class # patches method to return modified Net::HTTP class
         Net::HTTP.SOCKSProxy(socks_addr, socks_port)
       end
     end
