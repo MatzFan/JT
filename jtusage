@@ -44,6 +44,7 @@ class UsageMonitor
     @login_form = login_form
     @consumer_page = consumer_page
     @account_page = account_page
+    @balance_page = balance_page
     @usage_page = usage_page
   end
 
@@ -62,8 +63,12 @@ class UsageMonitor
     @consumer_page.forms.last.submit
   end
 
-  def usage_page
+  def balance_page
     @account_page.link_with(text: /My balances/).click
+  end
+
+  def usage_page
+    @balance_page.link_with(text: /Broadband Landline Data/).click
   end
 
   def balance_details(field_index)
